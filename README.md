@@ -24,8 +24,75 @@ The following directory structure is recommended:
 | `./www/` | `0755` | WWWRoot. Place PHP scripts here and point HTTP server to it.
 | `./www/result/` | `0777` | A directory for generated image files.
 
+If you host your own server, and are using Apache2, you can have better permissions by doing something like:
+
+``` bash
+cd /var/www
+mkdir bigmap
+cd bigmap/
+# upload files into this folder. move files in scripts folder into base folder
+mkdir queue
+chown root:www-data queue
+chown -R root:www-data www
+chmod -R 770 *
+cd www
+chmod 760 *
+mkdir result
+cd ..
+cd queue
+touch done
+touch log
+touch queue
+mkdir tasks
+mkdir tiles
+```
+
+For a dedicated server using Apache2, you will want an bigmap.conf file in /etc/apache2/sites-available something like this:
+
+``` apacheconf
+<VirtualHost *:80>
+	ServerName bigmap.[yourserver].net
+
+	DocumentRoot /var/www/bigmap/www
+	<Directory />
+		AllowOverride None
+	</Directory>
+	<Directory /var/www/bigmap/www>
+		AllowOverride None
+		Order allow,deny
+		Allow from all
+	</Directory>
+
+	ErrorLog ${APACHE_LOG_DIR}/error-bigmap.log
+	LogLevel warn
+	CustomLog ${APACHE_LOG_DIR}/access-bigmap.log combined
+</VirtualHost>
+```
+
+Then call
+
+``` bash
+a2ensite bigmap
+apache2ctl configtest
+apache2ctl graceful.
+```
+
+Test you have a working setup
+1. Opening a browser at bigmap.[yourserver].net
+2. Click the 'Submit' button to create a (small!) map
+3. Click to 'enqueue' a map - you should see a screen saying something like 'Task mxa69242215: queued'.
+4. Click 'list all tasks'
+
 Then modify paths to be absolute in `bigmap_download.pl` and `purge_images.pl` scripts, so they can be
 called by cron. Also change server address in `bigmap_download.pl` and size limit in `purge_images.pl`.
+
+Get the Go to the root path (e.g. `/var/www/bigmap`) and test your perl scripts, run by typing
+
+```bash
+./bigmap_download.pl
+./purge_images.pl
+```
+
 And add those two lines in `crontab -e` editor (your intervals may vary):
 
     */2 * * * * /var/www/.../bigmap_download.pl
